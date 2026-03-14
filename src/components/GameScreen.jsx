@@ -9,6 +9,8 @@ export default function GameScreen({
   maxTime,
   guessPosition,
   confirmed,
+  showResult,
+  actualPosition,
   onMapClick,
   onConfirm,
 }) {
@@ -77,53 +79,55 @@ export default function GameScreen({
       <div className="animate-slide-in-right" style={{ flex: 1, position: "relative" }}>
         <MapView
           guessPosition={guessPosition}
-          actualPosition={null}
-          showResult={false}
+          actualPosition={actualPosition}
+          showResult={showResult}
           onMapClick={onMapClick}
           disabled={confirmed}
         />
 
-        {/* Confirm overlay */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 1000,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
-          {guessPosition && !confirmed && (
-            <button
-              className="btn btn-primary btn-lg animate-fade-in-up"
-              onClick={onConfirm}
-              style={{ minWidth: 180, boxShadow: "var(--shadow-lg)" }}
-            >
-              Confirm Guess
-            </button>
-          )}
+        {/* Confirm overlay — only shown while playing */}
+        {!showResult && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 20,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 1000,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            {guessPosition && !confirmed && (
+              <button
+                className="btn btn-primary btn-lg animate-fade-in-up"
+                onClick={onConfirm}
+                style={{ minWidth: 180, boxShadow: "var(--shadow-lg)" }}
+              >
+                Confirm Guess
+              </button>
+            )}
 
-          {!guessPosition && (
-            <div
-              className="animate-fade-in"
-              style={{
-                padding: "8px 16px",
-                background: "var(--bg-card)",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--border-color)",
-                color: "var(--text-muted)",
-                fontSize: "0.85rem",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
-              Click on the map to place your guess
-            </div>
-          )}
-        </div>
+            {!guessPosition && (
+              <div
+                className="animate-fade-in"
+                style={{
+                  padding: "8px 16px",
+                  background: "var(--bg-card)",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-muted)",
+                  fontSize: "0.85rem",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                Click on the map to place your guess
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

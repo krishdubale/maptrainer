@@ -81,27 +81,9 @@ export default function useGameState() {
   const modeConfig = mode ? GAME_MODES[mode] : null;
   const totalRounds = modeConfig?.rounds || 0;
 
-  // --- Timer ---
-  useEffect(() => {
-    if (phase !== "playing" || !modeConfig?.timePerRound) return;
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          // Auto-submit with no guess (timeout)
-          handleTimeout();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerRef.current);
-  }, [phase, currentRound, mode]);
-
+  // Timeout handler — must be defined BEFORE the timer effects that use it.
+  // Dependencies are kept explicit so the hook linter stays happy.
   const handleTimeout = useCallback(() => {
-    // If the player hasn't confirmed a guess, score 0
     if (!confirmed) {
       const result = {
         location: locations[currentRound],
@@ -116,6 +98,32 @@ export default function useGameState() {
       setPhase("result");
     }
   }, [confirmed, currentRound, locations]);
+
+  // --- Timer countdown ---
+  useEffect(() => {
+    if (phase !== "playing" || !modeConfig?.timePerRound) return;
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerRef.current);
+  }, [phase, currentRound, mode, modeConfig?.timePerRound]);
+
+  // Trigger timeout when countdown reaches 0 — deferred via setTimeout to avoid
+  // calling setState synchronously inside an effect body.
+  useEffect(() => {
+    if (phase === "playing" && modeConfig?.timePerRound && timeLeft === 0) {
+      const id = setTimeout(() => handleTimeout(), 0);
+      return () => clearTimeout(id);
+    }
+  }, [timeLeft, phase, modeConfig, handleTimeout]);
 
   // --- Actions ---
 
@@ -175,15 +183,22 @@ export default function useGameState() {
 
   const nextRound = useCallback(() => {
     if (currentRound >= totalRounds - 1) {
-      // Save best score
-      const best = localStorage.getItem("bgmi_best_score");
-      const finalScore = totalScore;
-      if (!best || finalScore > parseInt(best)) {
-        localStorage.setItem("bgmi_best_score", finalScore.toString());
+      // Save per-mode best score
+      const modeKey = `bgmi_best_${mode}`;
+      const prevBest = parseInt(localStorage.getItem(modeKey) || "0");
+      if (totalScore > prevBest) {
+        localStorage.setItem(modeKey, totalScore.toString());
       }
-      // Increment games played
+      // Update global best score (max across all modes)
+      const globalBest = parseInt(localStorage.getItem("bgmi_best_score") || "0");
+      if (totalScore > globalBest) {
+        localStorage.setItem("bgmi_best_score", totalScore.toString());
+      }
+      // Increment games played (global + per-mode)
       const played = parseInt(localStorage.getItem("bgmi_games_played") || "0");
       localStorage.setItem("bgmi_games_played", (played + 1).toString());
+      const modePlayed = parseInt(localStorage.getItem(`bgmi_games_${mode}`) || "0");
+      localStorage.setItem(`bgmi_games_${mode}`, (modePlayed + 1).toString());
 
       setPhase("gameover");
     } else {
@@ -195,7 +210,7 @@ export default function useGameState() {
       setTimeLeft(modeConfig?.timePerRound || null);
       setPhase("playing");
     }
-  }, [currentRound, totalRounds, totalScore, modeConfig]);
+  }, [currentRound, totalRounds, mode, modeConfig, totalScore]);
 
   const goHome = useCallback(() => {
     clearInterval(timerRef.current);
@@ -222,7 +237,6 @@ export default function useGameState() {
     totalRounds,
     timeLeft,
     guessPosition,
-    guessNormalized,
     confirmed,
     roundResult,
     roundHistory,

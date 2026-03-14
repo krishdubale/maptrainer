@@ -13,7 +13,7 @@ const modeDetails = {
   },
 };
 
-export default function HomeScreen({ onStart, gameModes }) {
+export default function HomeScreen({ onStart, gameModes, onSettings }) {
   const bestScore = localStorage.getItem("bgmi_best_score") || "—";
   const gamesPlayed = localStorage.getItem("bgmi_games_played") || "0";
 
@@ -60,11 +60,11 @@ export default function HomeScreen({ onStart, gameModes }) {
           Map Trainer
         </h1>
         <p style={{ fontSize: "0.95rem", color: "var(--text-secondary)", maxWidth: 380, margin: "0 auto", lineHeight: 1.5 }}>
-          Master Erangel's drops, rotations, and callouts.
+          Master Erangel&apos;s drops, rotations, and callouts.
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Global Stats */}
       <div
         className="animate-fade-in-up"
         style={{
@@ -81,18 +81,19 @@ export default function HomeScreen({ onStart, gameModes }) {
       </div>
 
       {/* Mode Cards */}
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", maxWidth: 720 }}>
+      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", maxWidth: 760 }}>
         {Object.entries(gameModes).map(([key, config], index) => {
           const d = modeDetails[key];
+          const modeBest = localStorage.getItem(`bgmi_best_${key}`);
           return (
             <div
               key={key}
               className="card animate-fade-in-up"
               style={{
-                width: 220,
+                width: 228,
                 cursor: "pointer",
                 textAlign: "center",
-                padding: "28px 20px",
+                padding: "28px 20px 20px",
                 animationDelay: `${0.08 + index * 0.06}s`,
                 animationFillMode: "backwards",
               }}
@@ -109,27 +110,59 @@ export default function HomeScreen({ onStart, gameModes }) {
               >
                 {config.name}
               </h3>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4, marginBottom: "14px" }}>
                 {d.tagline}
               </p>
+              {/* Per-mode best */}
+              <div
+                style={{
+                  paddingTop: "10px",
+                  borderTop: "1px solid var(--border-color)",
+                  fontSize: "0.72rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                Best:{" "}
+                <span
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    color: modeBest ? "var(--color-accent)" : "var(--text-muted)",
+                  }}
+                >
+                  {modeBest || "—"}
+                </span>
+              </div>
             </div>
           );
         })}
       </div>
 
       {/* Footer */}
-      <p
+      <div
         className="animate-fade-in"
         style={{
           marginTop: "28px",
-          fontSize: "0.75rem",
-          color: "var(--text-muted)",
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
           animationDelay: "0.3s",
           animationFillMode: "backwards",
         }}
       >
-        Select a mode to begin · ESC to quit during game
-      </p>
+        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+          Select a mode to begin · ESC to quit during game
+        </p>
+        <button
+          className="btn btn-sm btn-secondary"
+          onClick={onSettings}
+          title="Settings"
+          aria-label="Open settings"
+        >
+          ⚙ Settings
+        </button>
+      </div>
     </div>
   );
 }
