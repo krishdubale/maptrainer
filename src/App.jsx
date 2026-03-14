@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useGameState from "./hooks/useGameState";
+import { useSound, getSoundEnabled, setSoundEnabled } from "./hooks/useSound";
 import Header from "./components/Header";
 import HomeScreen from "./components/HomeScreen";
 import GameScreen from "./components/GameScreen";
 import RoundResult from "./components/RoundResult";
 import GameOver from "./components/GameOver";
+import SettingsPanel from "./components/SettingsPanel";
 
 export default function App() {
   const {
@@ -16,7 +18,6 @@ export default function App() {
     totalRounds,
     timeLeft,
     guessPosition,
-    guessNormalized,
     confirmed,
     roundResult,
     roundHistory,
@@ -29,6 +30,38 @@ export default function App() {
     IMAGE_SIZE,
     GAME_MODES,
   } = useGameState();
+
+  // Sound preferences
+  const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled);
+  const { playClick, playConfirm, playScore, playTimeout } = useSound(soundEnabled);
+
+  const toggleSound = () => {
+    setSoundEnabledState((prev) => {
+      const next = !prev;
+      setSoundEnabled(next);
+      return next;
+    });
+  };
+
+  // Settings panel visibility
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Compute the actual position on the map for the result overlay
+  const actualPosition =
+    currentLocation
+      ? [currentLocation.y * IMAGE_SIZE, currentLocation.x * IMAGE_SIZE]
+      : null;
+
+  // Play sounds in response to game events
+  useEffect(() => {
+    if (roundResult) {
+      if (roundResult.timedOut) {
+        playTimeout();
+      } else {
+        playScore(roundResult.score);
+      }
+    }
+  }, [roundResult, playTimeout, playScore]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -43,14 +76,16 @@ export default function App() {
         }
       }
       if (e.key === "Escape") {
-        if (phase === "playing" || phase === "result") {
+        if (showSettings) {
+          setShowSettings(false);
+        } else if (phase === "playing" || phase === "result") {
           goHome();
         }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [phase, guessPosition, confirmed, confirmGuess, nextRound, goHome]);
+  }, [phase, guessPosition, confirmed, showSettings, confirmGuess, nextRound, goHome]);
 
   return (
     <div
@@ -72,10 +107,14 @@ export default function App() {
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {/* Home screen */}
         {phase === "home" && (
-          <HomeScreen onStart={startGame} gameModes={GAME_MODES} />
+          <HomeScreen
+            onStart={startGame}
+            gameModes={GAME_MODES}
+            onSettings={() => setShowSettings(true)}
+          />
         )}
 
-        {/* Playing */}
+        {/* Playing + result share the same GameScreen so the map isn't remounted */}
         {(phase === "playing" || phase === "result") && (
           <GameScreen
             currentLocation={currentLocation}
@@ -85,16 +124,23 @@ export default function App() {
             maxTime={modeConfig?.timePerRound}
             guessPosition={guessPosition}
             confirmed={confirmed}
-            onMapClick={(lat, lng) => placeGuess(lat, lng)}
-            onConfirm={confirmGuess}
+            showResult={phase === "result"}
+            actualPosition={phase === "result" ? actualPosition : null}
+            onMapClick={(lat, lng) => {
+              placeGuess(lat, lng);
+              playClick();
+            }}
+            onConfirm={() => {
+              confirmGuess();
+              playConfirm();
+            }}
           />
         )}
 
-        {/* Round result overlay */}
+        {/* Round result bottom-bar overlay */}
         {phase === "result" && roundResult && (
           <RoundResult
             roundResult={roundResult}
-            guessPosition={guessPosition}
             currentLocation={currentLocation}
             onNext={nextRound}
             isLastRound={currentRound >= totalRounds - 1}
@@ -107,11 +153,21 @@ export default function App() {
             totalScore={totalScore}
             roundHistory={roundHistory}
             totalRounds={totalRounds}
+            mode={mode}
             onPlayAgain={() => startGame(mode)}
             onHome={goHome}
           />
         )}
       </div>
+
+      {/* Settings modal */}
+      {showSettings && (
+        <SettingsPanel
+          soundEnabled={soundEnabled}
+          onToggleSound={toggleSound}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

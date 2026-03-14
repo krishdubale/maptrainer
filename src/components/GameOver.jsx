@@ -4,11 +4,16 @@ export default function GameOver({
   totalScore,
   roundHistory,
   totalRounds,
+  mode,
   onPlayAgain,
   onHome,
 }) {
   const avgScore = totalRounds > 0 ? Math.round(totalScore / totalRounds) : 0;
   const { tier, label, color } = getTier(avgScore);
+
+  // Check whether this run beat the stored best for this mode
+  const prevBest = parseInt(localStorage.getItem(`bgmi_best_${mode}`) || "0");
+  const isNewBest = totalScore > 0 && totalScore >= prevBest;
 
   const best = roundHistory.reduce(
     (b, r, i) => (r.score > b.score ? { ...r, index: i } : b),
@@ -57,7 +62,7 @@ export default function GameOver({
           </div>
         </div>
 
-        {/* Score */}
+        {/* Score + new-best badge */}
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
           <div style={labelStyle}>Total Score</div>
           <div
@@ -74,6 +79,21 @@ export default function GameOver({
               / {totalRounds * 1000}
             </span>
           </div>
+          {isNewBest && (
+            <div
+              className="badge animate-score-pop"
+              style={{
+                marginTop: "8px",
+                display: "inline-flex",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                background: "rgba(45,106,79,0.12)",
+                color: "var(--color-accent)",
+              }}
+            >
+              🏆 New Personal Best!
+            </div>
+          )}
         </div>
 
         {/* Best / Worst */}
